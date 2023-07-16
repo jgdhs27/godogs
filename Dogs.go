@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 )
@@ -38,8 +39,14 @@ func (fg *FilledGrid) Set(x, y int, char string) {
 	fg.rows[y][x] = char
 }
 
-func (fg *FilledGrid) IsSquareOccupied(x, y int) bool {
-	return fg.rows[y][x] != " "
+func (fg *FilledGrid) canInsert(x, y int) bool {
+	if x < 0 || y < 0 {
+		return false
+	}
+	if y >= len(fg.rows) || x >= len(fg.rows[0]) {
+		return false
+	}
+	return fg.rows[y][x] == " "
 }
 
 func (fg *FilledGrid) Rotate() *FilledGrid {
@@ -86,11 +93,13 @@ func (b *Board) Insert(other *FilledGrid, x, y int, charToInsert string) (*Board
 
 	for y_offset, row := range other.rows {
 		for x_offset, _ := range row {
-			if other.IsSquareOccupied(x_offset, y_offset) {
-				if b.IsSquareOccupied(x+x_offset, y+y_offset) {
+			if !other.canInsert(x_offset, y_offset) {
+				if b.canInsert(x+x_offset, y+y_offset) {
+					newState.Set(x+x_offset, y+y_offset, charToInsert)
+				} else {
 					return nil, &DoesNotFitError{}
 				}
-				newState.Set(x+x_offset, y+y_offset, charToInsert)
+				
 			}
 		}
 	}
@@ -334,21 +343,14 @@ func solve(dogs []*Dog, board *Board) (*Board, error) {
 	for _, dogOrientation := range dog.orientations {
 		for x := 0; x < len(board.rows[0]); x++ {
 			for y := 0; y < len(board.rows); y++ {
-				func() {
-					defer func() {
-						if err := recover(); err != nil {
-							// "slice bounds out of range" error is caught here
-						}
-					}()
-
-					newBoard, err := board.Insert(dogOrientation, x, y, fmt.Sprint(len(dogs)-1))
-					if err == nil {
-						solution, _ := solve(otherDogs, newBoard)
-						if solution != nil {
-							panic("solution found")
-						}
+				newBoard, err := board.Insert(dogOrientation, x, y, fmt.Sprint(len(dogs)-1))
+				if err == nil {
+					solution, _ := solve(otherDogs, newBoard)
+					if solution != nil {
+						fmt.Println(solution)
+						os.Exit(0)
 					}
-				}()
+				}
 			}
 		}
 	}
