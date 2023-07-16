@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 )
@@ -92,9 +91,9 @@ func (b *Board) Insert(other *FilledGrid, x, y int, charToInsert string) (*Board
 	}
 
 	for y_offset, row := range other.rows {
-		for x_offset, _ := range row {
+		for x_offset := range row {
 			if !other.canInsert(x_offset, y_offset) {
-				if b.canInsert(x+x_offset, y+y_offset) {
+				if newState.canInsert(x+x_offset, y+y_offset) {
 					newState.Set(x+x_offset, y+y_offset, charToInsert)
 				} else {
 					return nil, &DoesNotFitError{}
@@ -169,6 +168,7 @@ func main() {
 		fmt.Println("Error:", err)
 		return
 	}
+	println("Found solution:")
 	fmt.Println(solution)
 }
 
@@ -204,8 +204,7 @@ func solve(dogs []*Dog, board *Board) (*Board, error) {
 				if err == nil {
 					solution, _ := solve(otherDogs, newBoard)
 					if solution != nil {
-						fmt.Println(solution)
-						os.Exit(0)
+						return solution, nil
 					}
 				}
 			}
