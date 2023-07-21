@@ -82,27 +82,34 @@ func NewBoard(inputString string) *Board {
 	return &Board{FilledGrid: NewFilledGrid(inputString)}
 }
 
-func (b *Board) Insert(other *FilledGrid, x, y int, charToInsert string) (*Board, error) {
-	newState := NewBoard("\n")
-	newState.rows = make([][]string, len(b.rows))
-	for i, row := range b.rows {
-		newState.rows[i] = make([]string, len(row))
-		copy(newState.rows[i], row)
-	}
-
+func (b *Board) Insert(other *FilledGrid, x, y int, charToInsert string) error {
 	for y_offset, row := range other.rows {
 		for x_offset := range row {
 			if !other.canInsert(x_offset, y_offset) {
-				if newState.canInsert(x+x_offset, y+y_offset) {
-					newState.Set(x+x_offset, y+y_offset, charToInsert)
-				} else {
-					return nil, &DoesNotFitError{}
-				}
-				
+				if !b.canInsert(x+x_offset, y+y_offset) {
+					return &DoesNotFitError{}
+				}				
 			}
 		}
 	}
-	return newState, nil
+	for y_offset, row := range other.rows {
+		for x_offset := range row {
+			if !other.canInsert(x_offset, y_offset) {
+				b.Set(x+x_offset, y+y_offset, charToInsert)
+			}
+		}
+	}
+	return nil
+}
+
+func (b *Board) Remove(charToRemove string) {
+	for y, row := range b.rows {
+		for x := range row {
+			if b.rows[y][x] == charToRemove {
+				b.rows[y][x] = " "
+			}
+		}
+	}
 }
 
 type Dog struct {
@@ -200,12 +207,13 @@ func solve(dogs []*Dog, board *Board) (*Board, error) {
 	for _, dogOrientation := range dog.orientations {
 		for x := 0; x < len(board.rows[0]); x++ {
 			for y := 0; y < len(board.rows); y++ {
-				newBoard, err := board.Insert(dogOrientation, x, y, fmt.Sprint(len(dogs)-1))
+				err := board.Insert(dogOrientation, x, y, fmt.Sprint(len(dogs)-1))
 				if err == nil {
-					solution, _ := solve(otherDogs, newBoard)
+					solution, _ := solve(otherDogs, board)
 					if solution != nil {
 						return solution, nil
 					}
+					board.Remove(fmt.Sprint(len(dogs)-1)) // Backtrack: remove the dog from the board
 				}
 			}
 		}
