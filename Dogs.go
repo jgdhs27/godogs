@@ -38,6 +38,10 @@ func (fg *FilledGrid) Set(x, y int, char string) {
 	fg.rows[y][x] = char
 }
 
+func (fg *FilledGrid) Get(x, y int) string {
+	return fg.rows[y][x]
+}
+
 func (fg *FilledGrid) canInsert(x, y int) bool {
 	if x < 0 || y < 0 {
 		return false
@@ -45,7 +49,7 @@ func (fg *FilledGrid) canInsert(x, y int) bool {
 	if y >= len(fg.rows) || x >= len(fg.rows[0]) {
 		return false
 	}
-	return fg.rows[y][x] == " "
+	return fg.Get(x, y) == " "
 }
 
 func (fg *FilledGrid) Rotate() *FilledGrid {
@@ -82,16 +86,20 @@ func NewBoard(inputString string) *Board {
 	return &Board{FilledGrid: NewFilledGrid(inputString)}
 }
 
-func (b *Board) Insert(other *FilledGrid, x, y int, charToInsert string) error {
+func (b *Board) Fits(other *FilledGrid, x, y int) bool {
 	for y_offset, row := range other.rows {
 		for x_offset := range row {
 			if !other.canInsert(x_offset, y_offset) {
 				if !b.canInsert(x+x_offset, y+y_offset) {
-					return &DoesNotFitError{}
+					return false
 				}				
 			}
 		}
 	}
+	return true
+}
+
+func (b *Board) Insert(other *FilledGrid, x, y int, charToInsert string) error {
 	for y_offset, row := range other.rows {
 		for x_offset := range row {
 			if !other.canInsert(x_offset, y_offset) {
@@ -105,8 +113,8 @@ func (b *Board) Insert(other *FilledGrid, x, y int, charToInsert string) error {
 func (b *Board) Remove(charToRemove string) {
 	for y, row := range b.rows {
 		for x := range row {
-			if b.rows[y][x] == charToRemove {
-				b.rows[y][x] = " "
+			if b.Get(x, y) == charToRemove {
+				b.Set(x, y, " ")
 			}
 		}
 	}
@@ -207,13 +215,14 @@ func solve(dogs []*Dog, board *Board) (*Board, error) {
 	for _, dogOrientation := range dog.orientations {
 		for x := 0; x < len(board.rows[0]); x++ {
 			for y := 0; y < len(board.rows); y++ {
-				err := board.Insert(dogOrientation, x, y, fmt.Sprint(len(dogs)-1))
-				if err == nil {
+				if board.Fits(dogOrientation, x, y) {
+					charToInsert := fmt.Sprint(len(dogs)-1)
+					board.Insert(dogOrientation, x, y, charToInsert)
 					solution, _ := solve(otherDogs, board)
 					if solution != nil {
 						return solution, nil
 					}
-					board.Remove(fmt.Sprint(len(dogs)-1)) // Backtrack: remove the dog from the board
+					board.Remove(charToInsert)
 				}
 			}
 		}
